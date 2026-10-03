@@ -7,6 +7,9 @@ function App() {
   const [profit, setProfit] = useState('')
   const [hoveredRow, setHoveredRow] = useState(null)
   const [openMenuRow, setOpenMenuRow] = useState(null)
+  const [editingRow, setEditingRow] = useState(null)
+  const [editOpenTime, setEditOpenTime] = useState('')
+  const [editProfit, setEditProfit] = useState('')
   useEffect(() => {
     fetch('http://127.0.0.1:8000/trades')
       .then(response => response.json())
@@ -55,6 +58,23 @@ function App() {
       setOpenMenuRow(null)
     })
 }
+  function handleEditSubmit(rowid) {
+  fetch(`http://127.0.0.1:8000/trades?rowid=${rowid}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ open_time: editOpenTime, profit: parseFloat(editProfit) })
+  })
+    .then(() => {
+      fetch('http://127.0.0.1:8000/trades')
+        .then(response => response.json())
+        .then(data => setTrades(data))
+
+      fetch('http://127.0.0.1:8000/stats')
+        .then(response => response.json())
+        .then(data => setStats(data))
+      setEditingRow(null)
+    })
+}
   return (
     <div>
       <h1>Trading Journal</h1>
@@ -90,30 +110,51 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {trades.map((trade,index) => (
-            <tr
-              key={trade.rowid}
-              onMouseEnter={() => setHoveredRow(trade.rowid)}
-              onMouseLeave={() => {
-              setHoveredRow(null)
+  {trades.map((trade, index) => (
+    <tr
+      key={trade.rowid}
+      onMouseEnter={() => setHoveredRow(trade.rowid)}
+      onMouseLeave={() => {
+        setHoveredRow(null)
+        setOpenMenuRow(null)
+      }}
+    >
+      <td>
+        {editingRow === trade.rowid ? (
+          <input value={editOpenTime} onChange={e => setEditOpenTime(e.target.value)} />
+        ) : (
+          trade.open_time
+        )}
+      </td>
+      <td>
+        {editingRow === trade.rowid ? (
+          <>
+            <input value={editProfit} onChange={e => setEditProfit(e.target.value)} />
+            <button onClick={() => handleEditSubmit(trade.rowid)}>Save</button>
+          </>
+        ) : (
+          trade.profit
+        )}
+      </td>
+      <td>
+        {hoveredRow === trade.rowid && (
+          <button onClick={() => setOpenMenuRow(trade.rowid)}>⋮</button>
+        )}
+        {openMenuRow === trade.rowid && (
+          <div>
+            <button onClick={() => handleDelete(trade.rowid)}>Delete</button>
+            <button onClick={() => {
+              setEditingRow(trade.rowid)
+              setEditOpenTime(trade.open_time)
+              setEditProfit(trade.profit)
               setOpenMenuRow(null)
-              }}
-            >
-              <td>{trade.open_time}</td>
-              <td>{trade.profit}</td>
-              <td>
-              {hoveredRow === trade.rowid && (
-                <button onClick={() => setOpenMenuRow(trade.rowid)}>⋮</button>
-              )}
-              {openMenuRow === trade.rowid && (
-                <div>
-                  <button onClick={() => handleDelete(trade.rowid)}>Delete</button>
-                </div>
-              )}
-              </td>
-              </tr>
-          ))}
-        </tbody>
+            }}>Edit</button>
+          </div>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
       </table>
     </div>
   )
